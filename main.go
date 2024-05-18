@@ -17,9 +17,10 @@ import (
 )
 
 const (
-	responseType = "code"
-	redirectURI  = "http://localhost:8080/callback"
-	grantType    = "authorization_code"
+	responseType    = "code"
+	readPhotosScope = "https://www.googleapis.com/auth/photoslibrary.readonly"
+	redirectURI     = "http://localhost:8080/callback"
+	grantType       = "authorization_code"
 
 	// https://tex2e.github.io/rfc-translater/html/rfc7636.html
 	// 付録B. S256 code_challenge_methodの例 "
@@ -162,7 +163,7 @@ func apiRequest(_ *http.Request, token string) ([]byte, error) {
 
 func main() {
 	googleClient, err := google.NewClient(
-		"https://www.googleapis.com/auth/photoslibrary.readonly",
+		readPhotosScope,
 		redirectURI,
 	)
 	if err != nil {
