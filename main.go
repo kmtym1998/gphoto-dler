@@ -11,6 +11,9 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"gphoto-dler/google"
+	"gphoto-dler/handler"
 )
 
 const (
@@ -67,25 +70,6 @@ func setUp() {
 func base64URLEncode() string {
 	hash := sha256.Sum256([]byte(verifier))
 	return base64.RawURLEncoding.EncodeToString(hash[:])
-}
-
-// Googleの認可エンドポイントにリダイレクトさせる
-func start(w http.ResponseWriter, req *http.Request) {
-	authEndpoint := oauth.authEndpoint
-
-	values := url.Values{}
-	values.Add("response_type", responseType)
-	values.Add("client_id", oauth.clientID)
-	values.Add("state", oauth.state)
-	values.Add("scope", oauth.scope)
-	values.Add("redirect_uri", redirectURI)
-
-	// PKCE用パラメータ
-	values.Add("code_challenge_method", oauth.codeChallengeMethod)
-	values.Add("code_challenge", oauth.codeChallenge)
-
-	// 認可エンドポイントにリダイレクト
-	http.Redirect(w, req, authEndpoint+values.Encode(), 302)
 }
 
 // 認可してからcallbackするところ
@@ -177,13 +161,21 @@ func apiRequest(_ *http.Request, token string) ([]byte, error) {
 }
 
 func main() {
+	googleClient, err := google.NewClient(
+		"https://www.googleapis.com/auth/photoslibrary.readonly",
+		redirectURI,
+	)
+	if err != nil {
+		panic(err)
+	}
+
 	setUp()
-	http.HandleFunc("/start", start)
+	http.HandleFunc("/start", handler.Start(googleClient))
 	http.HandleFunc("/callback", callback)
 	log.Println("starting server...")
 	log.Println("http://localhost:8080/start にアクセスしてください")
-	err := http.ListenAndServe("localhost:8080", nil)
-	if err != nil {
+
+	if err := http.ListenAndServe("localhost:8080", nil); err != nil {
 		log.Fatal(err)
 	}
 }
