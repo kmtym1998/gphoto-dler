@@ -71,7 +71,6 @@ func base64URLEncode() string {
 
 // Googleの認可エンドポイントにリダイレクトさせる
 func start(w http.ResponseWriter, req *http.Request) {
-
 	authEndpoint := oauth.authEndpoint
 
 	values := url.Values{}
@@ -91,7 +90,6 @@ func start(w http.ResponseWriter, req *http.Request) {
 
 // 認可してからcallbackするところ
 func callback(w http.ResponseWriter, req *http.Request) {
-
 	//クエリを取得
 	query := req.URL.Query()
 
@@ -105,13 +103,13 @@ func callback(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Println(err)
 	}
-	w.Write(body)
-
+	if _, err := w.Write(body); err != nil {
+		log.Println(err)
+	}
 }
 
 // 認可コードを使ってトークンリクエストをエンドポイントに送る
 func tokenRequest(query url.Values) (map[string]interface{}, error) {
-
 	tokenEndpoint := oauth.tokenEndpoint
 	values := url.Values{}
 	values.Add("client_id", oauth.clientID)
@@ -144,14 +142,15 @@ func tokenRequest(query url.Values) (map[string]interface{}, error) {
 
 	log.Printf("token response : %s", string(body))
 	var data map[string]interface{}
-	json.Unmarshal(body, &data)
+	if err := json.Unmarshal(body, &data); err != nil {
+		return nil, err
+	}
 
 	return data, nil
 }
 
 // 取得したトークンを利用してリソースにアクセス
-func apiRequest(req *http.Request, token string) ([]byte, error) {
-
+func apiRequest(_ *http.Request, token string) ([]byte, error) {
 	photoAPI := "https://photoslibrary.googleapis.com/v1/mediaItems"
 
 	req, err := http.NewRequest("GET", photoAPI, nil)
@@ -175,11 +174,9 @@ func apiRequest(req *http.Request, token string) ([]byte, error) {
 	}
 
 	return body, nil
-
 }
 
 func main() {
-
 	setUp()
 	http.HandleFunc("/start", start)
 	http.HandleFunc("/callback", callback)
@@ -189,5 +186,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 }
