@@ -4,16 +4,14 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
-	"io"
-	"log"
+	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
-	"strings"
 
 	"gphoto-dler/google"
 	"gphoto-dler/handler"
+
+	"github.com/lmittmann/tint"
 )
 
 const (
@@ -73,95 +71,20 @@ func base64URLEncode() string {
 	return base64.RawURLEncoding.EncodeToString(hash[:])
 }
 
-// 認可してからcallbackするところ
-func callback(w http.ResponseWriter, req *http.Request) {
-	//クエリを取得
-	query := req.URL.Query()
-
-	// トークンをリクエストする
-	result, err := tokenRequest(query)
-	if err != nil {
-		log.Println(err)
-	}
-	// トークンレスポンスのjsonからトークンだけ抜き出しリソースにリクエストを送る
-	body, err := apiRequest(req, result["access_token"].(string))
-	if err != nil {
-		log.Println(err)
-	}
-	if _, err := w.Write(body); err != nil {
-		log.Println(err)
-	}
-}
-
-// 認可コードを使ってトークンリクエストをエンドポイントに送る
-func tokenRequest(query url.Values) (map[string]interface{}, error) {
-	tokenEndpoint := oauth.tokenEndpoint
-	values := url.Values{}
-	values.Add("client_id", oauth.clientID)
-	values.Add("client_secret", oauth.clientSecret)
-	values.Add("grant_type", grantType)
-
-	// 取得した認可コードをトークンのリクエストにセット
-	values.Add("code", query.Get("code"))
-	values.Add("redirect_uri", redirectURI)
-
-	// PKCE用パラメータ
-	values.Add("code_verifier", verifier)
-
-	req, err := http.NewRequest("POST", tokenEndpoint, strings.NewReader(values.Encode()))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Printf("request err: %s", err)
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	log.Printf("token response : %s", string(body))
-	var data map[string]interface{}
-	if err := json.Unmarshal(body, &data); err != nil {
-		return nil, err
-	}
-
-	return data, nil
-}
-
-// 取得したトークンを利用してリソースにアクセス
-func apiRequest(_ *http.Request, token string) ([]byte, error) {
-	photoAPI := "https://photoslibrary.googleapis.com/v1/mediaItems"
-
-	req, err := http.NewRequest("GET", photoAPI, nil)
-	if err != nil {
-		return nil, err
-	}
-	// 取得したアクセストークンをHeaderにセットしてリソースサーバにリクエストを送る
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil || resp.StatusCode != 200 {
-		log.Printf("http status code is %d, err: %s", resp.StatusCode, err)
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Println(err)
-		return nil, err
-	}
-
-	return body, nil
-}
-
 func main() {
+	slog.SetDefault(
+		slog.New(
+			tint.NewHandler(
+				os.Stdout,
+				&tint.Options{
+					AddSource:  true,
+					Level:      slog.LevelDebug,
+					TimeFormat: "2006-01-02 15:04:05",
+				},
+			),
+		),
+	)
+
 	googleClient, err := google.NewClient(
 		readPhotosScope,
 		redirectURI,
@@ -172,11 +95,16 @@ func main() {
 
 	setUp()
 	http.HandleFunc("/start", handler.Start(googleClient))
-	http.HandleFunc("/callback", callback)
-	log.Println("starting server...")
-	log.Println("http://localhost:8080/start にアクセスしてください")
+	http.HandleFunc("/callback", handler.Callback(googleClient))
+	slog.Info(
+		"starting server...",
+		slog.Group("endpoints",
+			slog.String("start", "http://localhost:8080/start"),
+			slog.String("callback", "http://localhost:8080/callback"),
+		),
+	)
 
 	if err := http.ListenAndServe("localhost:8080", nil); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 }

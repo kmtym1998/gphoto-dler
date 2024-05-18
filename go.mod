@@ -6,6 +6,7 @@ require (
 	github.com/gphotosuploader/google-photos-api-client-go/v3 v3.0.5
 	github.com/joho/godotenv v1.5.1
 	golang.org/x/oauth2 v0.17.0
+	github.com/lmittmann/tint v1.0.4
 )
 
 require (
