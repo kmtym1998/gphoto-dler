@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 
@@ -13,7 +15,6 @@ import (
 
 const (
 	readPhotosScope = "https://www.googleapis.com/auth/photoslibrary.readonly"
-	redirectURI     = "http://localhost:8080/callback"
 )
 
 func main() {
@@ -30,6 +31,9 @@ func main() {
 		),
 	)
 
+	port := findAvailablePort()
+	redirectURI := "http://localhost:" + port + "/callback"
+
 	googleClient, err := google.NewClient(
 		readPhotosScope,
 		redirectURI,
@@ -38,17 +42,39 @@ func main() {
 		panic(err)
 	}
 
-	http.HandleFunc("/start", handler.Start(googleClient))
-	http.HandleFunc("/callback", handler.Callback(googleClient))
+	mux := http.NewServeMux()
+	mux.HandleFunc("/start", handler.Start(googleClient))
+	mux.HandleFunc("/callback", handler.Callback(googleClient))
+
+	srv := &http.Server{
+		Addr:    "localhost:" + port,
+		Handler: mux,
+	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			panic(err)
+		}
+	}()
+	defer srv.Close()
+
 	slog.Info(
 		"starting server...",
 		slog.Group("endpoints",
-			slog.String("start", "http://localhost:8080/start"),
-			slog.String("callback", "http://localhost:8080/callback"),
+			slog.String("start", fmt.Sprintf("http://%s/start", srv.Addr)),
+			slog.String("callback", fmt.Sprintf("http://%s/callback", srv.Addr)),
 		),
 	)
+}
 
-	if err := http.ListenAndServe("localhost:8080", nil); err != nil {
+func findAvailablePort() string {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
 		panic(err)
 	}
+	defer l.Close()
+
+	addr := l.Addr().String()
+
+	return addr[len(addr)-4:]
 }
