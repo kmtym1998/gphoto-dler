@@ -9,10 +9,7 @@ import (
 // 認可してからcallbackするところ
 func Callback(client *google.Client) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//クエリを取得
-		query := r.URL.Query()
-
-		code := query.Get("code")
+		code := r.URL.Query().Get("code")
 		if code == "" {
 			http.Error(w, "code not found", http.StatusBadRequest)
 			return
