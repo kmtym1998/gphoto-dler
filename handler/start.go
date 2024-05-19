@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 
 	"gphoto-dler/google"
@@ -12,6 +13,10 @@ func Start(client *google.Client) func(w http.ResponseWriter, req *http.Request)
 
 	// 認可エンドポイントにリダイレクト
 	return func(w http.ResponseWriter, req *http.Request) {
+		slog.Info(
+			"redirecting to: " + u.String(),
+		)
+
 		http.Redirect(w, req, u.String(), http.StatusFound)
 	}
 }

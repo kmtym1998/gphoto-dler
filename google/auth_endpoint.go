@@ -1,6 +1,8 @@
 package google
 
-import "net/url"
+import (
+	"net/url"
+)
 
 func (c *Client) BuildAuthURL() *url.URL {
 	opt := c.option

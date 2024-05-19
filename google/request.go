@@ -24,7 +24,7 @@ func (c *Client) TokenRequest(code string) (*Token, error) {
 	values := url.Values{}
 	values.Add("client_id", c.secret.Installed.ClientID)
 	values.Add("client_secret", c.secret.Installed.ClientSecret)
-	values.Add("grant_type", c.option.GrantType)
+	values.Add("grant_type", "authorization_code")
 
 	// 取得した認可コードをトークンのリクエストにセット
 	values.Add("code", code)

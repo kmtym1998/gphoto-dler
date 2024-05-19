@@ -34,7 +34,6 @@ type ClientOption struct {
 	AuthEndpoint        string
 	CodeChallenge       string
 	CodeChallengeMethod string
-	GrantType           string
 	RedirectURI         string
 	ResponseType        string
 	Scope               string
@@ -58,7 +57,6 @@ func NewClient(scope, redirectURI string) (*Client, error) {
 		AuthEndpoint:        "https://accounts.google.com/o/oauth2/v2/auth",
 		CodeChallenge:       base64URLEncode(),
 		CodeChallengeMethod: "S256",
-		GrantType:           "authorization_code",
 		RedirectURI:         redirectURI,
 		ResponseType:        "code",
 		Scope:               scope,
