@@ -1,9 +1,10 @@
 package handler
 
 import (
-	"log"
 	"net/http"
+	"time"
 
+	"gphoto-dler/cli/state"
 	"gphoto-dler/google"
 )
 
@@ -23,15 +24,13 @@ func Callback(client *google.Client) func(w http.ResponseWriter, r *http.Request
 			return
 		}
 
-		// トークンレスポンスのjsonからトークンだけ抜き出しリソースにリクエストを送る
-		body, err := client.GetMediaItems(token)
-		if err != nil {
+		state.State.SetAccessToken(token.AccessToken)
+		state.State.SetRefreshToken(token.RefreshToken)
+		state.State.SetExpiredAt(time.Duration(token.ExpiresIn) * time.Second)
+
+		if _, err := w.Write([]byte("<html><body><h1>認証完了</h1></body></html>")); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-		}
-
-		if _, err := w.Write(body); err != nil {
-			log.Println(err)
 		}
 	}
 }

@@ -6,11 +6,14 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
+	"gphoto-dler/cli/state"
 	"gphoto-dler/google"
 	"gphoto-dler/handler"
 
 	"github.com/lmittmann/tint"
+	"github.com/pkg/browser"
 )
 
 const (
@@ -43,6 +46,11 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+		if _, err := w.Write([]byte("OK")); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+	})
 	mux.HandleFunc("/start", handler.Start(googleClient))
 	mux.HandleFunc("/callback", handler.Callback(googleClient))
 
@@ -53,10 +61,39 @@ func main() {
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			panic(err)
+			if err == http.ErrServerClosed {
+				return
+			}
+
+			slog.Error(
+				"failed to get media items",
+				slog.String("error", err.Error()),
+			)
+
+			os.Exit(1)
 		}
 	}()
 	defer srv.Close()
+
+	for {
+		httpClient := &http.Client{}
+		resp, err := httpClient.Get("http://" + srv.Addr + "/health")
+		if err == nil && resp.StatusCode == http.StatusOK {
+			break
+		}
+		resp.Body.Close()
+
+		slog.Debug(
+			"waiting for server to start...",
+			slog.String("addr", srv.Addr),
+		)
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	slog.Debug(
+		"server started",
+		slog.String("addr", srv.Addr),
+	)
 
 	slog.Info(
 		"starting server...",
@@ -65,16 +102,49 @@ func main() {
 			slog.String("callback", fmt.Sprintf("http://%s/callback", srv.Addr)),
 		),
 	)
-}
 
-func findAvailablePort() string {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
+	u := googleClient.BuildAuthURL()
+	if err := browser.OpenURL(u.String()); err != nil {
+		slog.Warn(
+			"failed to open browser. please open the following URL manually",
+			slog.String("error", err.Error()),
+		)
+		fmt.Println(u.String())
+	}
+
+	// FIXME: チャンネル使ったほうがいいかも
+	for {
+		time.Sleep(1 * time.Second)
+
+		if state.State.IsAuthenticated() {
+			break
+		}
+	}
+
+	medias, err := googleClient.GetMediaItems(&google.Token{
+		TokenType:   "Bearer",
+		AccessToken: state.State.AccessToken(),
+	})
 	if err != nil {
 		panic(err)
 	}
-	defer l.Close()
 
-	addr := l.Addr().String()
+	fmt.Println(string(medias))
+}
 
-	return addr[len(addr)-4:]
+func findAvailablePort() string {
+	for i := 49152; i < 65535; i++ {
+		l, err := net.Listen("tcp", "127.0.0.1:"+fmt.Sprintf("%d", i))
+		if err != nil {
+			continue
+		}
+
+		defer l.Close()
+
+		addr := l.Addr().String()
+
+		return addr[len(addr)-4:]
+	}
+
+	panic("no available port")
 }
