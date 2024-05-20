@@ -84,3 +84,13 @@ func (s *GlobalState) ExpiredAt() time.Time {
 
 	return s.expiredAt
 }
+
+// expiredAtを取得 (表示用)
+func (s *GlobalState) ExpireAfterForPrint() string {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	d := time.Until(s.expiredAt)
+
+	return d.String()
+}
