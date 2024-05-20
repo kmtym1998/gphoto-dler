@@ -84,19 +84,14 @@ func main() {
 		resp.Body.Close()
 
 		slog.Debug(
-			"waiting for server to start...",
+			"サーバの起動を待っています...",
 			slog.String("addr", srv.Addr),
 		)
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	slog.Debug(
-		"server started",
-		slog.String("addr", srv.Addr),
-	)
-
 	slog.Info(
-		"starting server...",
+		"サーバが起動しました",
 		slog.Group("endpoints",
 			slog.String("start", fmt.Sprintf("http://%s/start", srv.Addr)),
 			slog.String("callback", fmt.Sprintf("http://%s/callback", srv.Addr)),
@@ -106,7 +101,7 @@ func main() {
 	u := googleClient.BuildAuthURL()
 	if err := browser.OpenURL(u.String()); err != nil {
 		slog.Warn(
-			"failed to open browser. please open the following URL manually",
+			"ブラウザを開くことができませんでした。以下のURLを開いてください。",
 			slog.String("error", err.Error()),
 		)
 		fmt.Println(u.String())
@@ -119,6 +114,16 @@ func main() {
 		if state.State.IsAuthenticated() {
 			break
 		}
+	}
+
+	slog.Info(
+		"認証情報を更新するには、以下のURLから再認証してください。",
+	)
+	fmt.Println(u.String())
+	for {
+		time.Sleep(1 * time.Second)
+
+		fmt.Print(state.State.StatusText() + "\033[5A")
 	}
 
 	medias, err := googleClient.GetMediaItems(&google.Token{

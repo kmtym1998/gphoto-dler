@@ -1,6 +1,7 @@
 package state
 
 import (
+	"fmt"
 	"sync"
 	"time"
 )
@@ -11,7 +12,18 @@ type GlobalState struct {
 	// アクセストークンが無効になる時間
 	expiredAt time.Time
 
+	totalItemCount   int
+	successItemCount int
+	failedItems      []failedItem
+
 	mutex sync.Mutex
+}
+
+type failedItem struct {
+	Name    string
+	Err     error
+	URL     string
+	TakenAt time.Time
 }
 
 var State GlobalState = GlobalState{
@@ -86,11 +98,25 @@ func (s *GlobalState) ExpiredAt() time.Time {
 }
 
 // expiredAtを取得 (表示用)
-func (s *GlobalState) ExpireAfterForPrint() string {
+func (s *GlobalState) expireAfterForPrint() string {
+	d := time.Until(s.expiredAt)
+
+	if s.refreshToken == "" {
+		return d.String() + " (リフレッシュトークンなし)"
+	}
+
+	return d.String() + " (リフレッシュトークンあり)"
+}
+
+func (s *GlobalState) StatusText() string {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
-	d := time.Until(s.expiredAt)
-
-	return d.String()
+	return fmt.Sprint(
+		"処理ステータス", "\n",
+		"処理中: ", s.successItemCount+len(s.failedItems), " / ", s.totalItemCount, "\n",
+		"成功数: ", s.successItemCount, "\n",
+		"失敗数: ", len(s.failedItems), "\n",
+		"認証情報の有効期限: ", s.expireAfterForPrint(), "\n",
+	)
 }
