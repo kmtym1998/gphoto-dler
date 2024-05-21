@@ -18,7 +18,7 @@ func Callback(client *google.Client) func(w http.ResponseWriter, r *http.Request
 		}
 
 		// トークンをリクエストする
-		token, err := client.TokenRequest(code)
+		token, err := client.TokenRequestByAuthorizationCode(code)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

@@ -18,7 +18,7 @@ type Token struct {
 }
 
 // 認可コードを使ってトークンリクエストをエンドポイントに送る
-func (c *Client) TokenRequest(code string) (*Token, error) {
+func (c *Client) TokenRequestByAuthorizationCode(code string) (*Token, error) {
 	values := url.Values{}
 	values.Add("client_id", c.secret.Installed.ClientID)
 	values.Add("client_secret", c.secret.Installed.ClientSecret)
