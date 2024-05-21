@@ -12,14 +12,14 @@ type GlobalState struct {
 	// アクセストークンが無効になる時間
 	expiredAt time.Time
 
-	totalItemCount   int
-	successItemCount int
-	failedItems      []failedItem
+	totalItemCount int
+	successItems   []Item
+	failedItems    []Item
 
 	mutex sync.Mutex
 }
 
-type failedItem struct {
+type Item struct {
 	Name    string
 	Err     error
 	URL     string
@@ -114,8 +114,8 @@ func (s *GlobalState) StatusText() string {
 
 	return fmt.Sprint(
 		"処理ステータス", "\n",
-		"処理中: ", s.successItemCount+len(s.failedItems), " / ", s.totalItemCount, "\n",
-		"成功数: ", s.successItemCount, "\n",
+		"処理中: ", len(s.successItems)+len(s.failedItems), " / ", s.totalItemCount, "\n",
+		"成功数: ", len(s.successItems), "\n",
 		"失敗数: ", len(s.failedItems), "\n",
 		"認証情報の有効期限: ", s.expireAfterForPrint(), "\n",
 	)

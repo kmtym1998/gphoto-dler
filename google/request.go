@@ -66,6 +66,7 @@ func (c *Client) TokenRequest(code string) (*Token, error) {
 
 // 取得したトークンを利用してリソースにアクセス
 func (c *Client) GetMediaItems(token *Token) ([]byte, error) {
+	// NOTE: https://developers.google.com/photos/library/reference/rest/v1/mediaItems/list?hl=ja
 	const endpoint = "https://photoslibrary.googleapis.com/v1/mediaItems"
 
 	req, err := http.NewRequest(
