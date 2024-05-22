@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"gphoto-dler/cli/state"
 	"time"
 )
@@ -33,6 +34,8 @@ func (s *Service) GetAndSaveNewToken(authorizationCode string) error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Println("access token:", token.AccessToken)
 
 	state.State.SetAccessToken(token.AccessToken)
 	state.State.SetRefreshToken(token.RefreshToken)

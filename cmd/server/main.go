@@ -141,21 +141,10 @@ func main() {
 					lines++
 				}
 			}
-
 		}
 
 		fmt.Printf("\033[%dA", lines)
 	}
-
-	medias, err := googleClient.GetMediaItems(&google.Token{
-		TokenType:   "Bearer",
-		AccessToken: state.State.AccessToken(),
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println(string(medias))
 }
 
 func findAvailablePort() string {
