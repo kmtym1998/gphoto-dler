@@ -3,7 +3,6 @@ package google
 import (
 	"encoding/json"
 	"io"
-	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -12,7 +11,7 @@ import (
 type Token struct {
 	AccessToken  string `json:"access_token"`
 	ExpiresIn    int    `json:"expires_in"`
-	RefreshToken string `json:"refresh_token"`
+	RefreshToken string `json:"refresh_token,omitempty"`
 	Scope        string `json:"scope"`
 	TokenType    string `json:"token_type"`
 }
@@ -52,7 +51,46 @@ func (c *Client) TokenRequestByAuthorizationCode(code string) (*Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	slog.Info(string(body))
+
+	var data Token
+	if err := json.Unmarshal(body, &data); err != nil {
+		return nil, err
+	}
+
+	return &data, nil
+}
+
+// リフレッシュトークンを使ってトークンリクエストをエンドポイントに送る
+func (c *Client) TokenRequestByRefreshToken(refreshToken string) (*Token, error) {
+	values := url.Values{}
+	values.Add("client_id", c.secret.Installed.ClientID)
+	values.Add("client_secret", c.secret.Installed.ClientSecret)
+	values.Add("grant_type", "refresh_token")
+
+	// 取得したリフレッシュトークンをトークンのリクエストにセット
+	values.Add("refresh_token", refreshToken)
+
+	req, err := http.NewRequest(
+		http.MethodPost,
+		c.option.TokenEndpoint,
+		strings.NewReader(values.Encode()),
+	)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 
 	var data Token
 	if err := json.Unmarshal(body, &data); err != nil {

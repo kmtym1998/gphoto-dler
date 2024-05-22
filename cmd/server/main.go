@@ -11,13 +11,15 @@ import (
 	"gphoto-dler/cli/state"
 	"gphoto-dler/google"
 	"gphoto-dler/handler"
+	"gphoto-dler/service"
 
 	"github.com/lmittmann/tint"
 	"github.com/pkg/browser"
 )
 
 const (
-	readPhotosScope = "https://www.googleapis.com/auth/photoslibrary.readonly"
+	readPhotosScope      = "https://www.googleapis.com/auth/photoslibrary.readonly"
+	tokenRefreshInterval = 5 * time.Second
 )
 
 func main() {
@@ -44,6 +46,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	s := service.New(googleClient)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
@@ -52,7 +55,7 @@ func main() {
 		}
 	})
 	mux.HandleFunc("/start", handler.Start(googleClient))
-	mux.HandleFunc("/callback", handler.Callback(googleClient))
+	mux.HandleFunc("/callback", handler.Callback(s))
 
 	srv := &http.Server{
 		Addr:    "localhost:" + port,
@@ -121,9 +124,27 @@ func main() {
 	)
 	fmt.Println(u.String())
 	for {
+		lines := 0
 		time.Sleep(1 * time.Second)
 
-		fmt.Print(state.State.StatusText() + "\033[5A")
+		fmt.Print(state.State.StatusText())
+		lines += 5
+
+		now := time.Now()
+		if now.Add(60*time.Minute - tokenRefreshInterval).After(state.State.ExpiredAt()) {
+			if state.State.RefreshToken() == "" {
+				fmt.Println("アクセストークンが切れそうです。再認証してください。")
+				lines++
+			} else {
+				if err := s.RefreshToken(state.State.RefreshToken()); err != nil {
+					fmt.Println(err)
+					lines++
+				}
+			}
+
+		}
+
+		fmt.Printf("\033[%dA", lines)
 	}
 
 	medias, err := googleClient.GetMediaItems(&google.Token{
