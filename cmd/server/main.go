@@ -19,7 +19,7 @@ import (
 
 const (
 	readPhotosScope      = "https://www.googleapis.com/auth/photoslibrary.readonly"
-	tokenRefreshInterval = 5 * time.Second
+	tokenRefreshInterval = 55 * time.Minute
 )
 
 func main() {
@@ -131,30 +131,34 @@ func main() {
 		"認証情報を更新するには、以下のURLから再認証してください。",
 	)
 	fmt.Println(u.String())
-	for {
-		lines := 0
+	go func() {
+		for {
+			lines := 0
 
-		if err := s.DownloadMediaItems(destDir); err != nil {
-			s.ExportError(destDir, err)
-		}
+			time.Sleep(1 * time.Second)
 
-		fmt.Print(state.State.StatusText())
-		lines += 5
+			fmt.Print(state.State.StatusText())
+			lines += 5
 
-		now := time.Now()
-		if now.Add(60*time.Minute - tokenRefreshInterval).After(state.State.ExpiredAt()) {
-			if state.State.RefreshToken() == "" {
-				fmt.Println("アクセストークンが切れそうです。再認証してください。")
-				lines++
-			} else {
-				if err := s.RefreshToken(state.State.RefreshToken()); err != nil {
-					fmt.Println(err)
+			now := time.Now()
+			if now.Add(60*time.Minute - tokenRefreshInterval).After(state.State.ExpiredAt()) {
+				if state.State.RefreshToken() == "" {
+					fmt.Println("アクセストークンが切れそうです。再認証してください。")
 					lines++
+				} else {
+					if err := s.RefreshToken(state.State.RefreshToken()); err != nil {
+						fmt.Println(err)
+						lines++
+					}
 				}
 			}
-		}
 
-		fmt.Printf("\033[%dA", lines)
+			fmt.Printf("\033[%dA", lines)
+		}
+	}()
+
+	if err := s.DownloadMediaItems(destDir); err != nil {
+		s.ExportError(destDir, err)
 	}
 }
 

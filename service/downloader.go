@@ -49,7 +49,7 @@ func (s *Service) DownloadMediaItems(destDir string) error {
 		}
 		nextPageToken = result.NextPageToken
 
-		if err := batchDownloadMediaItems("downloads", result); err != nil {
+		if err := batchDownloadMediaItems(destDir, result); err != nil {
 			errList = append(errList, err)
 		}
 	}
@@ -80,25 +80,53 @@ func batchDownloadMediaItems(dstDir string, list *google.ListMediaItemsResult) e
 		resp, err := http.Get(endpoint)
 		if err != nil {
 			errList = append(errList, err)
+			state.State.AddFailedItem(state.Item{
+				Name:    item.Filename,
+				TakenAt: item.MediaMetadata.CreationTime,
+				URL:     item.BaseURL,
+			})
+
 			continue
 		}
 
 		if resp.StatusCode != http.StatusOK {
 			errList = append(errList, fmt.Errorf("failed to download %s. status: %s", item.Filename, resp.Status))
+			state.State.AddFailedItem(state.Item{
+				Name:    item.Filename,
+				TakenAt: item.MediaMetadata.CreationTime,
+				URL:     item.BaseURL,
+			})
+
 			continue
 		}
 
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			errList = append(errList, err)
+			state.State.AddFailedItem(state.Item{
+				Name:    item.Filename,
+				TakenAt: item.MediaMetadata.CreationTime,
+				URL:     item.BaseURL,
+			})
+
 			continue
 		}
 		resp.Body.Close()
 
+		state.State.AddTotalBytes(len(b))
+
 		if err := os.WriteFile(dstDir+"/"+item.Filename, b, os.ModePerm); err != nil {
 			errList = append(errList, err)
+			state.State.AddFailedItem(state.Item{
+				Name:    item.Filename,
+				TakenAt: item.MediaMetadata.CreationTime,
+				URL:     item.BaseURL,
+			})
+
 			continue
 		}
+
+		state.State.AddSuccessItemCount()
 	}
 
 	if len(errList) > 0 {

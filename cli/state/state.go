@@ -12,9 +12,9 @@ type GlobalState struct {
 	// アクセストークンが無効になる時間
 	expiredAt time.Time
 
-	totalItemCount int
-	successItems   []Item
-	failedItems    []Item
+	totalBytes       int
+	successItemCount int
+	failedItems      []Item
 
 	mutex sync.Mutex
 }
@@ -108,14 +108,47 @@ func (s *GlobalState) expireAfterForPrint() string {
 	return d.String() + " (リフレッシュトークンあり)"
 }
 
+func (s *GlobalState) AddSuccessItemCount() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.successItemCount++
+}
+
+func (s *GlobalState) AddFailedItem(item Item) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.failedItems = append(s.failedItems, item)
+}
+
+func (s *GlobalState) AddTotalBytes(bytes int) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.totalBytes += bytes
+}
+
+func (s *GlobalState) totalBytesForPrint() string {
+	if s.totalBytes < 1024 {
+		return fmt.Sprintf("%d B", s.totalBytes)
+	} else if s.totalBytes < 1024*1024 {
+		return fmt.Sprintf("%d KB", s.totalBytes/1024)
+	} else if s.totalBytes < 1024*1024*1024 {
+		return fmt.Sprintf("%d MB", s.totalBytes/(1024*1024))
+	} else {
+		return fmt.Sprintf("%d GB", s.totalBytes/(1024*1024*1024))
+	}
+}
+
 func (s *GlobalState) StatusText() string {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 
 	return fmt.Sprint(
 		"処理ステータス", "\n",
-		"処理中: ", len(s.successItems)+len(s.failedItems), " / ", s.totalItemCount, "\n",
-		"成功数: ", len(s.successItems), "\n",
+		"処理バイト数: ", s.totalBytesForPrint(), "\n",
+		"成功数: ", s.successItemCount, "\n",
 		"失敗数: ", len(s.failedItems), "\n",
 		"認証情報の有効期限: ", s.expireAfterForPrint(), "\n",
 	)
