@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-func (s *Service) DownloadMediaItems() error {
+func (s *Service) DownloadMediaItems(destDir string) error {
 	if state.State.AccessToken() == "" {
 		return errors.New("access token is empty")
 	}
@@ -27,7 +27,7 @@ func (s *Service) DownloadMediaItems() error {
 	}
 	nextPageToken := result.NextPageToken
 
-	if err := batchDownloadMediaItems("downloads", result); err != nil {
+	if err := batchDownloadMediaItems(destDir, result); err != nil {
 		errList = append(errList, err)
 	}
 
