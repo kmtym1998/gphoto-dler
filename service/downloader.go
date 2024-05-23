@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"strings"
+
+	"golang.org/x/sync/errgroup"
 )
 
 func (s *Service) DownloadMediaItems(destDir string) error {
@@ -60,74 +62,88 @@ func (s *Service) DownloadMediaItems(destDir string) error {
 func batchDownloadMediaItems(dstDir string, list *google.ListMediaItemsResult) error {
 	var errList []error
 
-	for _, item := range list.MediaItems {
-		var query string
-		switch determineMediaType(item.MimeType) {
-		case mediaTypeImage:
-			query = "=d-w" + item.MediaMetadata.Width + "-h" + item.MediaMetadata.Height
-		case mediaTypeVideo:
-			if item.MediaMetadata.Video.Status == "READY" {
-				query = "=dv-d"
-			} else {
-				query = "=d-w" + item.MediaMetadata.Width + "-h" + item.MediaMetadata.Height + "-no"
+	eg := errgroup.Group{}
+	eg.SetLimit(200)
+
+	for _, _item := range list.MediaItems {
+		item := _item
+
+		eg.Go(func() error {
+			var query string
+			switch determineMediaType(item.MimeType) {
+			case mediaTypeImage:
+				query = "=d-w" + item.MediaMetadata.Width + "-h" + item.MediaMetadata.Height
+			case mediaTypeVideo:
+				if item.MediaMetadata.Video.Status == "READY" {
+					query = "=dv-d"
+				} else {
+					query = "=d-w" + item.MediaMetadata.Width + "-h" + item.MediaMetadata.Height + "-no"
+				}
+			case mediaTypeUnknown:
+				query = "=d-w" + item.MediaMetadata.Width + "-h" + item.MediaMetadata.Height
 			}
-		case mediaTypeUnknown:
-			query = "=d-w" + item.MediaMetadata.Width + "-h" + item.MediaMetadata.Height
-		}
 
-		endpoint := item.BaseURL + query
+			endpoint := item.BaseURL + query
 
-		resp, err := http.Get(endpoint)
-		if err != nil {
-			errList = append(errList, err)
-			state.State.AddFailedItem(state.Item{
-				Name:    item.Filename,
-				TakenAt: item.MediaMetadata.CreationTime,
-				URL:     item.BaseURL,
-			})
+			resp, err := http.Get(endpoint)
+			if err != nil {
+				errList = append(errList, err)
+				state.State.AddFailedItem(state.Item{
+					Name:    item.Filename,
+					TakenAt: item.MediaMetadata.CreationTime,
+					URL:     item.BaseURL,
+					Err:     err,
+				})
 
-			continue
-		}
+				return nil
+			}
 
-		if resp.StatusCode != http.StatusOK {
-			errList = append(errList, fmt.Errorf("failed to download %s. status: %s", item.Filename, resp.Status))
-			state.State.AddFailedItem(state.Item{
-				Name:    item.Filename,
-				TakenAt: item.MediaMetadata.CreationTime,
-				URL:     item.BaseURL,
-			})
+			if resp.StatusCode != http.StatusOK {
+				errList = append(errList, fmt.Errorf("failed to download %s. status: %s", item.Filename, resp.Status))
+				state.State.AddFailedItem(state.Item{
+					Name:    item.Filename,
+					TakenAt: item.MediaMetadata.CreationTime,
+					URL:     item.BaseURL,
+					Err:     err,
+				})
 
-			continue
-		}
+				return nil
+			}
 
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			errList = append(errList, err)
-			state.State.AddFailedItem(state.Item{
-				Name:    item.Filename,
-				TakenAt: item.MediaMetadata.CreationTime,
-				URL:     item.BaseURL,
-			})
+			b, err := io.ReadAll(resp.Body)
+			if err != nil {
+				errList = append(errList, err)
+				state.State.AddFailedItem(state.Item{
+					Name:    item.Filename,
+					TakenAt: item.MediaMetadata.CreationTime,
+					URL:     item.BaseURL,
+				})
 
-			continue
-		}
-		resp.Body.Close()
+				return nil
+			}
+			resp.Body.Close()
 
-		state.State.AddTotalBytes(len(b))
+			state.State.AddTotalBytes(len(b))
 
-		if err := os.WriteFile(dstDir+"/"+item.Filename, b, os.ModePerm); err != nil {
-			errList = append(errList, err)
-			state.State.AddFailedItem(state.Item{
-				Name:    item.Filename,
-				TakenAt: item.MediaMetadata.CreationTime,
-				URL:     item.BaseURL,
-			})
+			if err := os.WriteFile(dstDir+"/"+item.Filename, b, os.ModePerm); err != nil {
+				errList = append(errList, err)
+				state.State.AddFailedItem(state.Item{
+					Name:    item.Filename,
+					TakenAt: item.MediaMetadata.CreationTime,
+					URL:     item.BaseURL,
+					Err:     err,
+				})
 
-			continue
-		}
+				return nil
+			}
 
-		state.State.AddSuccessItemCount()
+			state.State.AddSuccessItemCount()
+
+			return nil
+		})
 	}
+
+	eg.Wait() //nolint:errcheck
 
 	if len(errList) > 0 {
 		return errors.Join(errList...)

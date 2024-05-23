@@ -137,8 +137,15 @@ func (s *GlobalState) totalBytesForPrint() string {
 	} else if s.totalBytes < 1024*1024*1024 {
 		return fmt.Sprintf("%d MB", s.totalBytes/(1024*1024))
 	} else {
-		return fmt.Sprintf("%d GB", s.totalBytes/(1024*1024*1024))
+		return fmt.Sprintf("%f GB", float64(s.totalBytes)/(1024*1024*1024))
 	}
+}
+
+func (s *GlobalState) FailedItems() []Item {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	return s.failedItems
 }
 
 func (s *GlobalState) StatusText() string {

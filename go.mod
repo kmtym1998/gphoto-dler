@@ -6,6 +6,7 @@ require (
 	github.com/kr/pretty v0.3.1
 	github.com/lmittmann/tint v1.0.4
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
+	golang.org/x/sync v0.7.0
 )
 
 require (

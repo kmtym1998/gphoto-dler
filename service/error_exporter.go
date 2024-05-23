@@ -1,7 +1,9 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
+	"gphoto-dler/cli/state"
 	"log/slog"
 	"os"
 	"time"
@@ -23,23 +25,20 @@ func (s *Service) ExportError(destDir string, err error) {
 		destDir,
 		now.Unix(),
 	))
-
-	s.writeError(f, err)
-}
-
-func (s *Service) writeError(f *os.File, err error) {
-	if err == nil {
+	if err != nil {
+		slog.Error("ファイルを作成できませんでした", slog.String("error", err.Error()))
 		return
 	}
 
-	spreadableErr, ok := err.(interface {
-		Unwrap() []error
-	})
-	if !ok {
-		fmt.Fprintln(f, err)
+	items := state.State.FailedItems()
+	b, err := json.Marshal(items)
+	if err != nil {
+		slog.Error("JSONエンコードに失敗しました", slog.String("error", err.Error()))
+		return
 	}
 
-	for _, e := range spreadableErr.Unwrap() {
-		s.writeError(f, e)
+	if _, err := f.Write(b); err != nil {
+		slog.Error("ファイルに書き込めませんでした", slog.String("error", err.Error()))
+		return
 	}
 }
