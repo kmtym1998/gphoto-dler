@@ -20,6 +20,7 @@ import (
 // MEMO: 並行処理させずに 6 min 程度で 70 枚 & 500MB くらいのダウンロードが完了する
 // goroutine 同時数 20 で 5 分ぐらいで 500 枚 & 2GB くらいのダウンロードが完了する
 // goroutine 同時数 100 で 1.5 分ぐらいで 500 枚 & 2GB くらいのダウンロードが完了する
+// goroutine 同時数 200 で ↑ と同じくらいのペース
 
 const (
 	readPhotosScope      = "https://www.googleapis.com/auth/photoslibrary.readonly"
