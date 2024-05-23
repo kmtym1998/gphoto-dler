@@ -16,6 +16,10 @@ func (s *Service) DownloadMediaItems(destDir string) error {
 		return errors.New("access token is empty")
 	}
 
+	if err := os.MkdirAll(destDir, os.ModePerm); err != nil {
+		return err
+	}
+
 	var errList []error
 
 	result, err := s.googleClient.ListMediaItems(&google.Token{
