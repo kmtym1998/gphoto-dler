@@ -36,6 +36,14 @@ func main() {
 		),
 	)
 
+	args := os.Args[1:]
+	if len(args) != 1 {
+		fmt.Println("Usage: gphoto-dler <destination>")
+		os.Exit(1)
+	}
+
+	destDir := args[0]
+
 	port := findAvailablePort()
 	redirectURI := "http://localhost:" + port + "/callback"
 
@@ -125,7 +133,10 @@ func main() {
 	fmt.Println(u.String())
 	for {
 		lines := 0
-		time.Sleep(1 * time.Second)
+
+		if err := s.DownloadMediaItems(destDir); err != nil {
+			s.ExportError(destDir, err)
+		}
 
 		fmt.Print(state.State.StatusText())
 		lines += 5
