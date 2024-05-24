@@ -8,10 +8,10 @@ import (
 	"os"
 	"time"
 
-	"gphoto-dler/cli/state"
-	"gphoto-dler/google"
-	"gphoto-dler/handler"
-	"gphoto-dler/service"
+	"github.com/kmtym1998/gphoto-dler/cli/state"
+	"github.com/kmtym1998/gphoto-dler/google"
+	"github.com/kmtym1998/gphoto-dler/handler"
+	"github.com/kmtym1998/gphoto-dler/service"
 
 	"github.com/lmittmann/tint"
 	"github.com/pkg/browser"
@@ -43,7 +43,7 @@ func main() {
 
 	args := os.Args[1:]
 	if len(args) != 1 {
-		fmt.Println("Usage: gphoto-dler <destination>")
+		fmt.Println("Usage: github.com/kmtym1998/gphoto-dler <destination>")
 		os.Exit(1)
 	}
 

@@ -3,12 +3,13 @@ package service
 import (
 	"errors"
 	"fmt"
-	"gphoto-dler/cli/state"
-	"gphoto-dler/google"
 	"io"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/kmtym1998/gphoto-dler/cli/state"
+	"github.com/kmtym1998/gphoto-dler/google"
 
 	"golang.org/x/sync/errgroup"
 )

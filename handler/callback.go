@@ -3,7 +3,7 @@ package handler
 import (
 	"net/http"
 
-	"gphoto-dler/service"
+	"github.com/kmtym1998/gphoto-dler/service"
 )
 
 // 認可してからcallbackするところ

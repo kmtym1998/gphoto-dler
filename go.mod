@@ -1,4 +1,4 @@
-module gphoto-dler
+module github.com/kmtym1998/gphoto-dler
 
 go 1.22.3
 

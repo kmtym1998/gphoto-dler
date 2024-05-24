@@ -3,8 +3,9 @@ package service
 import (
 	"errors"
 	"fmt"
-	"gphoto-dler/cli/state"
 	"time"
+
+	"github.com/kmtym1998/gphoto-dler/cli/state"
 )
 
 func (s *Service) RefreshToken(refreshToken string) error {

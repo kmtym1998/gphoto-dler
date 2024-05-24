@@ -3,10 +3,11 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"gphoto-dler/cli/state"
 	"log/slog"
 	"os"
 	"time"
+
+	"github.com/kmtym1998/gphoto-dler/cli/state"
 )
 
 func (s *Service) ExportError(destDir string, err error) {

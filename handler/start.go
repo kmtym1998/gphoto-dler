@@ -4,7 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"gphoto-dler/google"
+	"github.com/kmtym1998/gphoto-dler/google"
 )
 
 // Googleの認可エンドポイントにリダイレクトさせる

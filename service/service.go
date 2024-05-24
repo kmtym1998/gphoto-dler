@@ -1,6 +1,6 @@
 package service
 
-import "gphoto-dler/google"
+import "github.com/kmtym1998/gphoto-dler/google"
 
 type Service struct {
 	googleClient *google.Client
